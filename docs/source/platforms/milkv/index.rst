@@ -5,3 +5,5 @@ Milk-V
    :maxdepth: 2
 
    duo
+   duo256m
+   duos

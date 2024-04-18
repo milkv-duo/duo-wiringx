@@ -41,6 +41,7 @@
 #include "soc/rockchip/rk3399.h"
 #include "soc/rockchip/rk3588.h"
 #include "soc/sophgo/cv180x.h"
+#include "soc/sophgo/sg200x.h"
 
 #include "platform/linksprite/pcduino1.h"
 #include "platform/lemaker/bananapi1.h"
@@ -64,6 +65,8 @@
 #include "platform/radxa/rock4.h"
 #include "platform/radxa/rock5b.h"
 #include "platform/milkv/duo.h"
+#include "platform/milkv/duo256m.h"
+#include "platform/milkv/duos.h"
 
 void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, ...);
 
@@ -244,6 +247,7 @@ static void wiringXInit(void) {
 	rk3399Init();
 	rk3588Init();
 	cv180xInit();
+	sg200xInit();
 
 	/* Init all platforms */
 	pcduino1Init();
@@ -268,6 +272,8 @@ static void wiringXInit(void) {
 	rock4Init();
 	rock5bInit();
 	milkv_duoInit();
+	milkv_duo256mInit();
+	milkv_duosInit();
 }
 
 EXPORT int wiringXSetup(char *name, void (*func)(int, char *, int, const char *, ...)) {
