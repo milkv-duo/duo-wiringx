@@ -12,7 +12,7 @@
 #ifndef __WIRINGX_MILKV_DUO_H_
 #define __WIRINGX_MILKV_DUO_H_
 
-#include "../platform.h"
+#include "common.h"
 
 extern struct platform_t *milkv_duo;
 

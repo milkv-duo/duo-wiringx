@@ -12,8 +12,7 @@
 #ifndef __WIRINGX_CV180X_H
 #define __WIRINGX_CV180X_H
 
-#include "../soc.h"
-#include "../../wiringx.h"
+#include "common.h"
 
 extern struct soc_t *cv180x;
 
