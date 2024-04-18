@@ -411,6 +411,8 @@ PyMODINIT_FUNC initgpio(void) {
 	PyModule_AddObject(module, "ROCK4", Py_BuildValue("s", "rock4"));
 	PyModule_AddObject(module, "ROCK5B", Py_BuildValue("s", "rock5b"));
 	PyModule_AddObject(module, "DUO", Py_BuildValue("s", "milkv_duo"));
+	PyModule_AddObject(module, "DUO256m", Py_BuildValue("s", "milkv_duo256m"));
+	PyModule_AddObject(module, "DUOs", Py_BuildValue("s", "milkv_duos"));
 
 #if PY_MAJOR_VERSION >= 3
 	return module;
