@@ -98,6 +98,11 @@ void wiringXSerialPrintf(int, const char *, ...);
 int wiringXSerialDataAvail(int);
 int wiringXSerialGetChar(int);
 
+int wiringXPWMSetPeriod(int, long);
+int wiringXPWMSetDuty(int, long);
+int wiringXPWMSetPolarity(int, int);
+int wiringXPWMEnable(int, int);
+
 char *wiringXPlatform(void);
 int wiringXValidGPIO(int);
 int wiringXSelectableFd(int);

@@ -54,4 +54,9 @@ void milkv_duoInit(void) {
 
 	milkv_duo->setup = &milkv_duoSetup;
 	milkv_duo->validGPIO = &milkv_duoValidGPIO;
+
+	milkv_duo->pwmSetPeriod = milkv_duo->soc->socSetPWMPeriod;
+	milkv_duo->pwmSetDuty = milkv_duo->soc->socSetPWMDuty;
+	milkv_duo->pwmSetPolarity = milkv_duo->soc->socSetPWMPolarity;
+	milkv_duo->pwmEnable = milkv_duo->soc->socEnablePWM;
 }

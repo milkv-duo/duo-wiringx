@@ -28,7 +28,10 @@ typedef struct platform_t {
 	int (*waitForInterrupt)(int, int);
 	int (*isr)(int, enum isr_mode_t);
 	int (*selectableFd)(int);
-
+	int (*pwmSetPeriod)(int, long);
+	int (*pwmSetDuty)(int, long);
+	int (*pwmSetPolarity)(int, int);
+	int (*pwmEnable)(int, int);
 	int (*validGPIO)(int);
 	int (*gc)(void);
 

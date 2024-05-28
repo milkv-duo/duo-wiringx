@@ -720,6 +720,50 @@ EXPORT int wiringXSerialGetChar(int fd) {
 	}
 }
 
+EXPORT int wiringXPWMSetPeriod(int pin, long period) {
+	if (platform == NULL) {
+		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
+	} else if (platform->pwmSetPeriod == NULL) {
+		wiringXLog(LOG_ERR, "The %s does not support the pwmSetPeriod functionality", platform->name[namenr]);
+		return -1;
+	}
+	return platform->pwmSetPeriod(pin, period);
+}
+
+EXPORT int wiringXPWMSetDuty(int pin, long duty_cycle) {
+	if (platform == NULL) {
+		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
+	} else if (platform->pwmSetDuty == NULL) {
+		wiringXLog(LOG_ERR, "The %s does not support the pwmSetDuty functionality", platform->name[namenr]);
+		return -1;
+	}
+	return platform->pwmSetDuty(pin, duty_cycle);
+}
+
+EXPORT int wiringXPWMSetPolarity(int pin, int polarity) {
+	if (platform == NULL) {
+		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
+	} else if (platform->pwmSetPolarity == NULL) {
+		wiringXLog(LOG_ERR, "The %s does not support the pwmSetPolarity functionality", platform->name[namenr]);
+		return -1;
+	}
+	return platform->pwmSetPolarity(pin, polarity);
+}
+
+EXPORT int wiringXPWMEnable(int pin, int enable) {
+	if (platform == NULL) {
+		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
+		return -1;
+	} else if (platform->pwmEnable == NULL) {
+		wiringXLog(LOG_ERR, "The %s does not support the pwmEnable functionality", platform->name[namenr]);
+		return -1;
+	}
+	return platform->pwmEnable(pin, enable);
+}
+
 EXPORT int wiringXSelectableFd(int gpio) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");

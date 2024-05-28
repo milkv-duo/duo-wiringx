@@ -50,6 +50,11 @@ typedef struct soc_t {
 	void (*setIRQ)(int *, size_t size);
 	char *(*getPinName)(int);
 
+	int (*socSetPWMPeriod)(int, long);
+	int (*socSetPWMDuty)(int, long);
+	int (*socSetPWMPolarity)(int, int);
+	int (*socEnablePWM)(int, int);
+
 	int (*validGPIO)(int);
 	int (*selectableFd)(int);
 	int (*gc)(void);
