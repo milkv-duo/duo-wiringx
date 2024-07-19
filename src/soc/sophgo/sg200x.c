@@ -14,6 +14,21 @@
 
 #define SG200X_GPIO_GROUP_COUNT 4
 
+static int pin_pwm[12][2] = {
+	{2, 7},  // GP2  -> PWM7
+	{3, 6},  // GP3  -> PWM6
+	{4,  5},  // GP4  -> PWM5
+	{5,  6},  // GP5  -> PWM6
+	{6,  9},  // GP6  -> PWM9
+	{7,  8},  // GP7  -> PWM8
+	{8,  7},  // GP8  -> PWM7
+	{9,  4},  // GP9  -> PWM4
+	{10, 10},  // GP10 -> PWM10
+	{11, 11},   // GP11 -> PWM11
+	{12, 4},  // GP12 -> PWM4
+	{13, 5}   // GP13 -> PWM5
+};
+
 struct soc_t *sg200x = NULL;
 
 static struct layout_t {
@@ -416,6 +431,212 @@ static int sg200xSelectableFd(int i) {
 	return pin->fd;
 }
 
+int sg200x_sysfs_pwm_set_long(struct soc_t *soc, char *path, long value) {
+	char out[16];
+	int fd = 0;
+	if((fd = open(path, O_WRONLY)) <= 0) {
+		wiringXLog(LOG_ERR, "The %s %s cannot open %s for PWM (%s)", soc->brand, soc->chip, path, strerror(errno));
+		return -1;
+	}
+	int l = snprintf(out, 16, "%ld", value);
+	if (write(fd, out, l) != l) {
+		wiringXLog(LOG_ERR, "The %s %s failed to write to %s for PWM (%s)", soc->brand, soc->chip, path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return 0;
+}
+
+int sg200x_sysfs_pwm_set_string(struct soc_t *soc, char *path, char *str) {
+	int fd = 0;
+	if ((fd = open(path, O_WRONLY)) <= 0) {
+		wiringXLog(LOG_ERR, "The %s %s cannot open %s for PWM (%s)", soc->brand, soc->chip, path, strerror(errno));
+		return -1;
+	}
+	int l = strlen(str);
+	if (write(fd, str, l) != l) {
+		wiringXLog(LOG_ERR, "The %s %s failed to write to %s for PWM (%s)", soc->brand, soc->chip, path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return 0;
+}
+
+/*
+index     |    0     1     2     3
+----------+-------------------------
+pwmchip0  -> pwm0, pwm1, pwm2, pwm3
+pwmchip4  -> pwm4, pwm5, pwm6, pwm7
+pwmchip8  -> pwm8, pwm9, pwm10,pwm11
+pwmchip12 -> pwm12,pwm13,pwm14,pwm15
+*/
+static int sg200x_get_pwm(int pin, int *chip, int *index) {
+	int i;
+	int found = 0;
+	int pwm;
+
+	for (i = 0; i < 12; i++) {
+		if (pin == pin_pwm[i][0]) {
+			found = 1;
+			pwm = pin_pwm[i][1];
+			break;
+		}
+	}
+
+	if (found == 0) {
+		wiringXLog(LOG_ERR, "GP%d is not a PWM pin", pin);
+		return -1;
+	}
+
+	if (pwm < 4 || pwm > 11) {
+		wiringXLog(LOG_ERR, "pwm %d not supported", pwm);
+		return -1;
+	}
+
+	//wiringXLog(LOG_INFO, "GP%d is PWM%d", pin, pwm);
+
+	*chip = (pwm / 4) * 4;
+	*index = pwm % 4;
+
+	return pwm;
+}
+
+static int sg200xSetPWMPeriod(int pin, long period) {
+	int chip = 0;
+	int index = 0;
+	char path[PATH_MAX];
+	int pwm = sg200x_get_pwm(pin, &chip, &index);
+
+	if (pwm < 0) {
+		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
+		return -1;
+	}
+
+	memset(path, 0, sizeof(path));
+
+	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), period: %ld", __func__, __LINE__, pin, pwm, chip, index, period);
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
+	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
+		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+			return -1;
+		}
+	}
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/period", chip, index);
+	if (sg200x_sysfs_pwm_set_long(sg200x, path, period) == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static int sg200xSetPWMDuty(int pin, long duty_cycle) {
+	int chip = 0;
+	int index = 0;
+	char path[PATH_MAX];
+	int pwm = sg200x_get_pwm(pin, &chip, &index);
+
+	if (pwm < 0) {
+		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
+		return -1;
+	}
+
+	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), duty_cycle: %ld", __func__, __LINE__, pin, pwm, chip, index, duty_cycle);
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
+	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
+		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+			return -1;
+		}
+	}
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/duty_cycle", chip, index);
+	if (sg200x_sysfs_pwm_set_long(sg200x, path, duty_cycle) == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+  0 - normal
+  1 - inversed
+*/
+static int sg200xSetPWMPolarity(int pin, int polarity) {
+	int chip = 0;
+	int index = 0;
+	char path[PATH_MAX];
+	char polarity_str[16];
+	int pwm = sg200x_get_pwm(pin, &chip, &index);
+
+	if (pwm < 0) {
+		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
+		return -1;
+	}
+
+	memset(path, 0, sizeof(path));
+
+	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), polarity: %ld", __func__, __LINE__, pin, pwm, chip, index, polarity);
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
+	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
+		if(soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+			return -1;
+		}
+	}
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/polarity", chip, index);
+
+	if (polarity == 0) {
+		sprintf(polarity_str, "normal");
+	} else {
+		sprintf(polarity_str, "inversed");
+	}
+
+	if (sg200x_sysfs_pwm_set_string(sg200x, path, polarity_str) == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static int sg200xEnablePWM(int pin, int enable) {
+	int chip = 0;
+	int index = 0;
+	char path[PATH_MAX];
+	int pwm = sg200x_get_pwm(pin, &chip, &index);
+
+	if (pwm < 0) {
+		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
+		return -1;
+	}
+
+	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), enable: %ld", __func__, __LINE__, pin, pwm, chip, index, enable);
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
+	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
+		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+			return -1;
+		}
+	}
+
+	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/enable", chip, index);
+	if (sg200x_sysfs_pwm_set_long(sg200x, path, enable) == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
 void sg200xInit(void) {
 	soc_register(&sg200x, "Sophgo", "SG200X");
 
@@ -436,4 +657,9 @@ void sg200xInit(void) {
 	sg200x->setIRQ = &sg200xSetIRQ;
 	sg200x->isr = &sg200xISR;
 	sg200x->waitForInterrupt = &sg200xWaitForInterrupt;
+	
+	sg200x->socSetPWMPeriod = &sg200xSetPWMPeriod;
+	sg200x->socSetPWMDuty = &sg200xSetPWMDuty;
+	sg200x->socSetPWMPolarity = &sg200xSetPWMPolarity;
+	sg200x->socEnablePWM = &sg200xEnablePWM;
 }
