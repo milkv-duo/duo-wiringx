@@ -66,11 +66,16 @@ static int milkv_duosSetup(void) {
 void milkv_duosInit(void) {
 	platform_register(&milkv_duos, "milkv_duos");
 
-	milkv_duos->soc = soc_get("Sophgo", "SG200X");
+	milkv_duos->soc = soc_get("Sophgo", "SG2000");
 	milkv_duos->soc->setMap(map, _sizeof(map));
 
 	milkvInit(milkv_duos);
 
 	milkv_duos->setup = &milkv_duosSetup;
 	milkv_duos->validGPIO = &milkv_duosValidGPIO;
+	
+	milkv_duos->pwmSetPeriod = milkv_duos->soc->socSetPWMPeriod;
+	milkv_duos->pwmSetDuty = milkv_duos->soc->socSetPWMDuty;
+	milkv_duos->pwmSetPolarity = milkv_duos->soc->socSetPWMPolarity;
+	milkv_duos->pwmEnable = milkv_duos->soc->socEnablePWM;
 }
