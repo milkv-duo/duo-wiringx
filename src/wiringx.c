@@ -41,7 +41,7 @@
 #include "soc/rockchip/rk3399.h"
 #include "soc/rockchip/rk3588.h"
 #include "soc/sophgo/cv180x.h"
-#include "soc/sophgo/sg200x.h"
+#include "soc/sophgo/sg2002.h"
 #include "soc/sophgo/sg2000.h"
 
 #include "platform/linksprite/pcduino1.h"
@@ -251,7 +251,7 @@ static void wiringXInit(void) {
 	rk3399Init();
 	rk3588Init();
 	cv180xInit();
-	sg200xInit();
+	sg2002Init();
 	sg2000Init();
 
 	/* Init all platforms */

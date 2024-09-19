@@ -10,13 +10,13 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef __WIRINGX_SG200X_H
-#define __WIRINGX_SG200X_H
+#ifndef __WIRINGX_SG2002_H
+#define __WIRINGX_SG2002_H
 
 #include "common.h"
 
-extern struct soc_t *sg200x;
+extern struct soc_t *sg2002;
 
-void sg200xInit(void);
+void sg2002Init(void);
 
 #endif

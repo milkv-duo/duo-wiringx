@@ -10,9 +10,9 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#include "sg200x.h"
+#include "sg2002.h"
 
-#define SG200X_GPIO_GROUP_COUNT 4
+#define SG2002_GPIO_GROUP_COUNT 4
 
 static int pin_pwm[12][2] = {
 	{2, 7},  // GP2  -> PWM7
@@ -29,7 +29,7 @@ static int pin_pwm[12][2] = {
 	{13, 5}   // GP13 -> PWM5
 };
 
-struct soc_t *sg200x = NULL;
+struct soc_t *sg2002 = NULL;
 
 static struct layout_t {
 	char *name;
@@ -185,65 +185,65 @@ static struct layout_t {
 	GPIO_UNAVAILABLE("PWR_GPIO_31"),
 };
 
-static int sg200xSetup(void) {
+static int sg2002Setup(void) {
 	int i = 0;
 
-	if((sg200x->fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+	if((sg2002->fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
 		wiringXLog(LOG_ERR, "wiringX failed to open /dev/mem for raw memory access");
 		return -1;
 	}
-	for(i = 0; i < SG200X_GPIO_GROUP_COUNT; i++) {
-		if((sg200x->gpio[i] = (unsigned char *)mmap(0, sg200x->page_size, PROT_READ | PROT_WRITE, MAP_SHARED, sg200x->fd, sg200x->base_addr[i])) == NULL) {
-			wiringXLog(LOG_ERR, "wiringX failed to map The %s %s GPIO memory address", sg200x->brand, sg200x->chip);
+	for(i = 0; i < SG2002_GPIO_GROUP_COUNT; i++) {
+		if((sg2002->gpio[i] = (unsigned char *)mmap(0, sg2002->page_size, PROT_READ | PROT_WRITE, MAP_SHARED, sg2002->fd, sg2002->base_addr[i])) == NULL) {
+			wiringXLog(LOG_ERR, "wiringX failed to map The %s %s GPIO memory address", sg2002->brand, sg2002->chip);
 			return -1;
 		}
 	}
-	if((pinmux_register_virtual_address = (unsigned char *)mmap(0, sg200x->page_size, PROT_READ | PROT_WRITE, MAP_SHARED, sg200x->fd, PINMUX_BASE)) == NULL) {
-		wiringXLog(LOG_ERR, "wiringX failed to map The %s %s CRU memory address", sg200x->brand, sg200x->chip);
+	if((pinmux_register_virtual_address = (unsigned char *)mmap(0, sg2002->page_size, PROT_READ | PROT_WRITE, MAP_SHARED, sg2002->fd, PINMUX_BASE)) == NULL) {
+		wiringXLog(LOG_ERR, "wiringX failed to map The %s %s CRU memory address", sg2002->brand, sg2002->chip);
 		return -1;
 	}
 
 	return 0;
 }
 
-static char *sg200xGetPinName(int pin) {
-	return sg200x->layout[pin].name;
+static char *sg2002GetPinName(int pin) {
+	return sg2002->layout[pin].name;
 }
 
-static void sg200xSetMap(int *map, size_t size) {
-	sg200x->map = map;
-	sg200x->map_size = size;
+static void sg2002SetMap(int *map, size_t size) {
+	sg2002->map = map;
+	sg2002->map_size = size;
 }
 
-static void sg200xSetIRQ(int *irq, size_t size) {
-	sg200x->irq = irq;
-	sg200x->irq_size = size;
+static void sg2002SetIRQ(int *irq, size_t size) {
+	sg2002->irq = irq;
+	sg2002->irq_size = size;
 }
 
-struct layout_t *sg200xGetLayout(int i, int *mapping) {
+struct layout_t *sg2002GetLayout(int i, int *mapping) {
 	struct layout_t *pin = NULL;
 	unsigned int *grf_reg = NULL;
 	unsigned int iomux_value = 0;
 
 	if(mapping == NULL) {
-		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", sg200x->brand, sg200x->chip);
+		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", sg2002->brand, sg2002->chip);
 		return NULL;
 	}
 	if(wiringXValidGPIO(i) != 0) {
 		wiringXLog(LOG_ERR, "The %i is not the right GPIO number");
 		return NULL;
 	}
-	if(sg200x->fd <= 0 || sg200x->gpio == NULL) {
-		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", sg200x->brand, sg200x->chip);
+	if(sg2002->fd <= 0 || sg2002->gpio == NULL) {
+		wiringXLog(LOG_ERR, "The %s %s has not yet been setup by wiringX", sg2002->brand, sg2002->chip);
 		return NULL;
 	}
 
-	pin = &sg200x->layout[mapping[i]];
+	pin = &sg2002->layout[mapping[i]];
 	if(pin->support == FUNCTION_UNKNOWN) {
 		wiringXLog(LOG_ERR, "This pin is currently unavailable");
 		return NULL;
 	}
-	if(pin->gpio_group < 0 || pin->gpio_group >= SG200X_GPIO_GROUP_COUNT) {
+	if(pin->gpio_group < 0 || pin->gpio_group >= SG2002_GPIO_GROUP_COUNT) {
 		wiringXLog(LOG_ERR, "pin->group out of range: %i, expect 0~3", pin->gpio_group);
 		return NULL;
 	}
@@ -251,24 +251,24 @@ struct layout_t *sg200xGetLayout(int i, int *mapping) {
 	return pin;
 }
 
-#define sg200xGetPinLayout(i) (sg200xGetLayout(i, sg200x->map))
-#define sg200xGetIrqLayout(i) (sg200xGetLayout(i, sg200x->irq))
+#define sg2002GetPinLayout(i) (sg2002GetLayout(i, sg2002->map))
+#define sg2002GetIrqLayout(i) (sg2002GetLayout(i, sg2002->irq))
 
-static int sg200xDigitalWrite(int i, enum digital_value_t value) {
+static int sg2002DigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned int *data_reg = 0;
 	uint32_t val = 0;
 
-	if((pin = sg200xGetPinLayout(i)) == NULL) {
+	if((pin = sg2002GetPinLayout(i)) == NULL) {
 		return -1;
 	}
 
 	if(pin->mode != PINMODE_OUTPUT) {
-		wiringXLog(LOG_ERR, "The %s %s GPIO%d is not set to output mode", sg200x->brand, sg200x->chip, i);
+		wiringXLog(LOG_ERR, "The %s %s GPIO%d is not set to output mode", sg2002->brand, sg2002->chip, i);
 		return -1;
 	}
 
-	data_reg = (volatile unsigned int *)(sg200x->gpio[pin->gpio_group] + pin->data.offset + GPIO_SWPORTA_DR);
+	data_reg = (volatile unsigned int *)(sg2002->gpio[pin->gpio_group] + pin->data.offset + GPIO_SWPORTA_DR);
 	if(value == HIGH) {
 		*data_reg |= (1 << (pin->data.bit));
 	} else if(value == LOW) {
@@ -281,40 +281,40 @@ static int sg200xDigitalWrite(int i, enum digital_value_t value) {
 	return 0;
 }
 
-static int sg200xDigitalRead(int i) {
+static int sg2002DigitalRead(int i) {
 	struct layout_t *pin = NULL;
 	unsigned int *data_reg = NULL;
 	uint32_t val = 0;
 
-	if((pin = sg200xGetPinLayout(i)) == NULL) {
+	if((pin = sg2002GetPinLayout(i)) == NULL) {
 		return -1;
 	}
 
 	if(pin->mode != PINMODE_INPUT) {
-		wiringXLog(LOG_ERR, "The %s %s GPIO%d is not set to input mode", sg200x->brand, sg200x->chip, i);
+		wiringXLog(LOG_ERR, "The %s %s GPIO%d is not set to input mode", sg2002->brand, sg2002->chip, i);
 		return -1;
 	}
 
-	data_reg = (volatile unsigned int *)(sg200x->gpio[pin->gpio_group] + pin->data.offset + GPIO_EXT_PORTA);
+	data_reg = (volatile unsigned int *)(sg2002->gpio[pin->gpio_group] + pin->data.offset + GPIO_EXT_PORTA);
 	val = *data_reg;
 
 	return (int)((val & (1 << pin->data.bit)) >> pin->data.bit);
 }
 
-static int sg200xPinMode(int i, enum pinmode_t mode) {
+static int sg2002PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned int *pinmux_reg = NULL;
 	unsigned int *dir_reg = NULL;
 	unsigned int mask = 0;
 
-	if((pin = sg200xGetPinLayout(i)) == NULL) {
+	if((pin = sg2002GetPinLayout(i)) == NULL) {
 		return -1;
 	}
 
 	pinmux_reg = (volatile unsigned int *) (pinmux_register_virtual_address + pin->pinmux.offset);
 	*pinmux_reg = pin->pinmux.value;
 
-	dir_reg = (volatile unsigned int *)(sg200x->gpio[pin->gpio_group] + pin->direction.offset);
+	dir_reg = (volatile unsigned int *)(sg2002->gpio[pin->gpio_group] + pin->direction.offset);
 	if(mode == PINMODE_INPUT) {
 		*dir_reg &= ~(1 << pin->direction.bit);
 	} else if(mode == PINMODE_OUTPUT) {
@@ -329,35 +329,35 @@ static int sg200xPinMode(int i, enum pinmode_t mode) {
 	return 0;
 }
 
-static int sg200xISR(int i, enum isr_mode_t mode) {
+static int sg2002ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 	memset(path, 0, sizeof(path));
 
-	if((pin = sg200xGetIrqLayout(i)) == NULL) {
+	if((pin = sg2002GetIrqLayout(i)) == NULL) {
 		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d", pin->num);
-	if((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+	if((soc_sysfs_check_gpio(sg2002, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(sg200x, path, pin->num) == -1) {
+		if(soc_sysfs_gpio_export(sg2002, path, pin->num) == -1) {
 			return -1;
 		}
 	}
 
 	sprintf(path, "/sys/devices/platform/%x.gpio/gpiochip%d/gpio/gpio%d/direction", gpio_register_physical_address[pin->gpio_group], pin->gpio_group, pin->num);
-	if(soc_sysfs_set_gpio_direction(sg200x, path, "in") == -1) {
+	if(soc_sysfs_set_gpio_direction(sg2002, path, "in") == -1) {
 		return -1;
 	}
 
 	sprintf(path, "/sys/devices/platform/%x.gpio/gpiochip%d/gpio/gpio%d/edge", gpio_register_physical_address[pin->gpio_group], pin->gpio_group, pin->num);
-	if(soc_sysfs_set_gpio_interrupt_mode(sg200x, path, mode) == -1) {
+	if(soc_sysfs_set_gpio_interrupt_mode(sg2002, path, mode) == -1) {
 		return -1;
 	}
 
 	sprintf(path, "/sys/devices/platform/%x.gpio/gpiochip%d/gpio/gpio%d/value", gpio_register_physical_address[pin->gpio_group], pin->gpio_group, pin->num);
-	if((pin->fd = soc_sysfs_gpio_reset_value(sg200x, path)) == -1) {
+	if((pin->fd = soc_sysfs_gpio_reset_value(sg2002, path)) == -1) {
 		return -1;
 	}
 
@@ -366,37 +366,37 @@ static int sg200xISR(int i, enum isr_mode_t mode) {
 	return 0;
 }
 
-static int sg200xWaitForInterrupt(int i, int ms) {
+static int sg2002WaitForInterrupt(int i, int ms) {
 	struct layout_t *pin = NULL;
 
-	if((pin = sg200xGetIrqLayout(i)) == NULL) {
+	if((pin = sg2002GetIrqLayout(i)) == NULL) {
 		return -1;
 	}
 
 	if(pin->mode != PINMODE_INTERRUPT) {
-		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", sg200x->brand, sg200x->chip, i);
+		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", sg2002->brand, sg2002->chip, i);
 		return -1;
 	}
 
-	return soc_wait_for_interrupt(sg200x, pin->fd, ms);
+	return soc_wait_for_interrupt(sg2002, pin->fd, ms);
 }
 
-static int sg200xGC(void) {
+static int sg2002GC(void) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 	int i = 0;
 	memset(path, 0, sizeof(path));
 
-	if(sg200x->map != NULL) {
-		for(i = 0; i < sg200x->map_size; i++) {
-			pin = &sg200x->layout[sg200x->map[i]];
+	if(sg2002->map != NULL) {
+		for(i = 0; i < sg2002->map_size; i++) {
+			pin = &sg2002->layout[sg2002->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
 				sprintf(path, "/sys/class/gpio/gpio%d", pin->num);
-				if((soc_sysfs_check_gpio(sg200x, path)) == 0) {
+				if((soc_sysfs_check_gpio(sg2002, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
-					soc_sysfs_gpio_unexport(sg200x, path, pin->num);
+					soc_sysfs_gpio_unexport(sg2002, path, pin->num);
 				}
 			}
 
@@ -408,30 +408,30 @@ static int sg200xGC(void) {
 	}
 
 	if(pinmux_register_virtual_address != NULL) {
-		munmap(pinmux_register_virtual_address, sg200x->page_size);
+		munmap(pinmux_register_virtual_address, sg2002->page_size);
 		pinmux_register_virtual_address = NULL;
 	}
-	for(i = 0; i < SG200X_GPIO_GROUP_COUNT; i++) {
-		if(sg200x->gpio[i] != NULL) {
-			munmap(sg200x->gpio[i], sg200x->page_size);
-			sg200x->gpio[i] = NULL;
+	for(i = 0; i < SG2002_GPIO_GROUP_COUNT; i++) {
+		if(sg2002->gpio[i] != NULL) {
+			munmap(sg2002->gpio[i], sg2002->page_size);
+			sg2002->gpio[i] = NULL;
 		}
 	}
 
 	return 0;
 }
 
-static int sg200xSelectableFd(int i) {
+static int sg2002SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if((pin = sg200xGetIrqLayout(i)) == NULL) {
+	if((pin = sg2002GetIrqLayout(i)) == NULL) {
 		return -1;
 	}
 
 	return pin->fd;
 }
 
-int sg200x_sysfs_pwm_set_long(struct soc_t *soc, char *path, long value) {
+int sg2002_sysfs_pwm_set_long(struct soc_t *soc, char *path, long value) {
 	char out[16];
 	int fd = 0;
 	if((fd = open(path, O_WRONLY)) <= 0) {
@@ -449,7 +449,7 @@ int sg200x_sysfs_pwm_set_long(struct soc_t *soc, char *path, long value) {
 	return 0;
 }
 
-int sg200x_sysfs_pwm_set_string(struct soc_t *soc, char *path, char *str) {
+int sg2002_sysfs_pwm_set_string(struct soc_t *soc, char *path, char *str) {
 	int fd = 0;
 	if ((fd = open(path, O_WRONLY)) <= 0) {
 		wiringXLog(LOG_ERR, "The %s %s cannot open %s for PWM (%s)", soc->brand, soc->chip, path, strerror(errno));
@@ -474,7 +474,7 @@ pwmchip4  -> pwm4, pwm5, pwm6, pwm7
 pwmchip8  -> pwm8, pwm9, pwm10,pwm11
 pwmchip12 -> pwm12,pwm13,pwm14,pwm15
 */
-static int sg200x_get_pwm(int pin, int *chip, int *index) {
+static int sg2002_get_pwm(int pin, int *chip, int *index) {
 	int i;
 	int found = 0;
 	int pwm;
@@ -505,11 +505,11 @@ static int sg200x_get_pwm(int pin, int *chip, int *index) {
 	return pwm;
 }
 
-static int sg200xSetPWMPeriod(int pin, long period) {
+static int sg2002SetPWMPeriod(int pin, long period) {
 	int chip = 0;
 	int index = 0;
 	char path[PATH_MAX];
-	int pwm = sg200x_get_pwm(pin, &chip, &index);
+	int pwm = sg2002_get_pwm(pin, &chip, &index);
 
 	if (pwm < 0) {
 		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
@@ -521,26 +521,26 @@ static int sg200xSetPWMPeriod(int pin, long period) {
 	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), period: %ld", __func__, __LINE__, pin, pwm, chip, index, period);
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
-	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+	if ((soc_sysfs_check_gpio(sg2002, path)) == -1) {
 		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
-		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+		if (soc_sysfs_gpio_export(sg2002, path, index) == -1) {
 			return -1;
 		}
 	}
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/period", chip, index);
-	if (sg200x_sysfs_pwm_set_long(sg200x, path, period) == -1) {
+	if (sg2002_sysfs_pwm_set_long(sg2002, path, period) == -1) {
 		return -1;
 	}
 
 	return 0;
 }
 
-static int sg200xSetPWMDuty(int pin, long duty_cycle) {
+static int sg2002SetPWMDuty(int pin, long duty_cycle) {
 	int chip = 0;
 	int index = 0;
 	char path[PATH_MAX];
-	int pwm = sg200x_get_pwm(pin, &chip, &index);
+	int pwm = sg2002_get_pwm(pin, &chip, &index);
 
 	if (pwm < 0) {
 		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
@@ -550,15 +550,15 @@ static int sg200xSetPWMDuty(int pin, long duty_cycle) {
 	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), duty_cycle: %ld", __func__, __LINE__, pin, pwm, chip, index, duty_cycle);
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
-	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+	if ((soc_sysfs_check_gpio(sg2002, path)) == -1) {
 		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
-		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+		if (soc_sysfs_gpio_export(sg2002, path, index) == -1) {
 			return -1;
 		}
 	}
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/duty_cycle", chip, index);
-	if (sg200x_sysfs_pwm_set_long(sg200x, path, duty_cycle) == -1) {
+	if (sg2002_sysfs_pwm_set_long(sg2002, path, duty_cycle) == -1) {
 		return -1;
 	}
 
@@ -569,12 +569,12 @@ static int sg200xSetPWMDuty(int pin, long duty_cycle) {
   0 - normal
   1 - inversed
 */
-static int sg200xSetPWMPolarity(int pin, int polarity) {
+static int sg2002SetPWMPolarity(int pin, int polarity) {
 	int chip = 0;
 	int index = 0;
 	char path[PATH_MAX];
 	char polarity_str[16];
-	int pwm = sg200x_get_pwm(pin, &chip, &index);
+	int pwm = sg2002_get_pwm(pin, &chip, &index);
 
 	if (pwm < 0) {
 		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
@@ -586,9 +586,9 @@ static int sg200xSetPWMPolarity(int pin, int polarity) {
 	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), polarity: %ld", __func__, __LINE__, pin, pwm, chip, index, polarity);
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
-	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+	if ((soc_sysfs_check_gpio(sg2002, path)) == -1) {
 		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
-		if(soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+		if(soc_sysfs_gpio_export(sg2002, path, index) == -1) {
 			return -1;
 		}
 	}
@@ -601,18 +601,18 @@ static int sg200xSetPWMPolarity(int pin, int polarity) {
 		sprintf(polarity_str, "inversed");
 	}
 
-	if (sg200x_sysfs_pwm_set_string(sg200x, path, polarity_str) == -1) {
+	if (sg2002_sysfs_pwm_set_string(sg2002, path, polarity_str) == -1) {
 		return -1;
 	}
 
 	return 0;
 }
 
-static int sg200xEnablePWM(int pin, int enable) {
+static int sg2002EnablePWM(int pin, int enable) {
 	int chip = 0;
 	int index = 0;
 	char path[PATH_MAX];
-	int pwm = sg200x_get_pwm(pin, &chip, &index);
+	int pwm = sg2002_get_pwm(pin, &chip, &index);
 
 	if (pwm < 0) {
 		wiringXLog(LOG_ERR, "[%s:%d] get pwm for pin(%d) failed!", __func__, __LINE__, pin);
@@ -622,44 +622,44 @@ static int sg200xEnablePWM(int pin, int enable) {
 	//wiringXLog(LOG_INFO, "[%s:%d], GP%d/PWM%d(chip:%d,index:%d), enable: %ld", __func__, __LINE__, pin, pwm, chip, index, enable);
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d", chip, index);
-	if ((soc_sysfs_check_gpio(sg200x, path)) == -1) {
+	if ((soc_sysfs_check_gpio(sg2002, path)) == -1) {
 		sprintf(path, "/sys/class/pwm/pwmchip%d/export", chip);
-		if (soc_sysfs_gpio_export(sg200x, path, index) == -1) {
+		if (soc_sysfs_gpio_export(sg2002, path, index) == -1) {
 			return -1;
 		}
 	}
 
 	sprintf(path, "/sys/class/pwm/pwmchip%d/pwm%d/enable", chip, index);
-	if (sg200x_sysfs_pwm_set_long(sg200x, path, enable) == -1) {
+	if (sg2002_sysfs_pwm_set_long(sg2002, path, enable) == -1) {
 		return -1;
 	}
 
 	return 0;
 }
 
-void sg200xInit(void) {
-	soc_register(&sg200x, "Sophgo", "SG200X");
+void sg2002Init(void) {
+	soc_register(&sg2002, "Sophgo", "SG2002");
 
-	sg200x->layout = layout;
+	sg2002->layout = layout;
 
-	sg200x->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
-	sg200x->page_size = (1024*4);
-	memcpy(sg200x->base_addr, gpio_register_physical_address, sizeof(gpio_register_physical_address));
+	sg2002->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
+	sg2002->page_size = (1024*4);
+	memcpy(sg2002->base_addr, gpio_register_physical_address, sizeof(gpio_register_physical_address));
 
-	sg200x->gc = &sg200xGC;
-	sg200x->selectableFd = &sg200xSelectableFd;
-	sg200x->pinMode = &sg200xPinMode;
-	sg200x->setup = &sg200xSetup;
-	sg200x->digitalRead = &sg200xDigitalRead;
-	sg200x->digitalWrite = &sg200xDigitalWrite;
-	sg200x->getPinName = &sg200xGetPinName;
-	sg200x->setMap = &sg200xSetMap;
-	sg200x->setIRQ = &sg200xSetIRQ;
-	sg200x->isr = &sg200xISR;
-	sg200x->waitForInterrupt = &sg200xWaitForInterrupt;
+	sg2002->gc = &sg2002GC;
+	sg2002->selectableFd = &sg2002SelectableFd;
+	sg2002->pinMode = &sg2002PinMode;
+	sg2002->setup = &sg2002Setup;
+	sg2002->digitalRead = &sg2002DigitalRead;
+	sg2002->digitalWrite = &sg2002DigitalWrite;
+	sg2002->getPinName = &sg2002GetPinName;
+	sg2002->setMap = &sg2002SetMap;
+	sg2002->setIRQ = &sg2002SetIRQ;
+	sg2002->isr = &sg2002ISR;
+	sg2002->waitForInterrupt = &sg2002WaitForInterrupt;
 	
-	sg200x->socSetPWMPeriod = &sg200xSetPWMPeriod;
-	sg200x->socSetPWMDuty = &sg200xSetPWMDuty;
-	sg200x->socSetPWMPolarity = &sg200xSetPWMPolarity;
-	sg200x->socEnablePWM = &sg200xEnablePWM;
+	sg2002->socSetPWMPeriod = &sg2002SetPWMPeriod;
+	sg2002->socSetPWMDuty = &sg2002SetPWMDuty;
+	sg2002->socSetPWMPolarity = &sg2002SetPWMPolarity;
+	sg2002->socEnablePWM = &sg2002EnablePWM;
 }
