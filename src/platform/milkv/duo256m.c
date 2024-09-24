@@ -48,7 +48,7 @@ static int milkv_duo256mSetup(void) {
 void milkv_duo256mInit(void) {
 	platform_register(&milkv_duo256m, "milkv_duo256m");
 
-	milkv_duo256m->soc = soc_get("Sophgo", "SG200X");
+	milkv_duo256m->soc = soc_get("Sophgo", "SG2002");
 	milkv_duo256m->soc->setMap(map, _sizeof(map));
 
 	milkvInit(milkv_duo256m);

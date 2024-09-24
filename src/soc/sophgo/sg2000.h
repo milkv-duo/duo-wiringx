@@ -15,8 +15,8 @@
 
 #include "common.h"
 
-extern struct soc_t *sg200x;
+extern struct soc_t *sg2000;
 
-void sg200xInit(void);
+void sg2000Init(void);
 
 #endif

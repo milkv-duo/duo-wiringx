@@ -39,7 +39,8 @@
 #include "soc/rockchip/rk3399.h"
 #include "soc/rockchip/rk3588.h"
 #include "soc/sophgo/cv180x.h"
-#include "soc/sophgo/sg200x.h"
+#include "soc/sophgo/sg2002.h"
+#include "soc/sophgo/sg2000.h"
 
 #include "platform/linksprite/pcduino1.h"
 #include "platform/lemaker/bananapi1.h"
@@ -65,6 +66,9 @@
 #include "platform/milkv/duo.h"
 #include "platform/milkv/duo256m.h"
 #include "platform/milkv/duos.h"
+
+typedef time_t __time_t;
+typedef suseconds_t __suseconds_t;
 
 void wiringXDefaultLog(int prio, char *file, int line, const char *format_str, ...);
 
@@ -245,7 +249,8 @@ static void wiringXInit(void) {
 	rk3399Init();
 	rk3588Init();
 	cv180xInit();
-	sg200xInit();
+	sg2002Init();
+	sg2000Init();
 
 	/* Init all platforms */
 	pcduino1Init();
