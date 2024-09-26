@@ -14,6 +14,9 @@
 
 struct platform_t *milkv_duos = NULL;
 
+extern int duos_pin_pwm[20][2];
+extern int *sg200x_pin_pwm;
+
 static int map[] = {
 	/*	XGPIOA[29]	3V3		VSYS		XGPIOB[20]	*/
 		29,		-1,		-1,		52,
@@ -60,13 +63,14 @@ static int milkv_duosValidGPIO(int pin) {
 }
 
 static int milkv_duosSetup(void) {
+	sg200x_pin_pwm = &duos_pin_pwm;
 	return milkvSetup(milkv_duos, map, _sizeof(map));
 }
 
 void milkv_duosInit(void) {
 	platform_register(&milkv_duos, "milkv_duos");
 
-	milkv_duos->soc = soc_get("Sophgo", "SG2000");
+	milkv_duos->soc = soc_get("Sophgo", "SG200X");
 	milkv_duos->soc->setMap(map, _sizeof(map));
 
 	milkvInit(milkv_duos);
